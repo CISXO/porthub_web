@@ -223,18 +223,17 @@ CREATE FULLTEXT INDEX idx_title ON Portfolios(Title);
     chatGpt:
       key: /* */
    
-   management:
-  server:
-    port: 9292
-  endpoint:
-    health:
-      show-details: always
-  endpoints:
-    web:
-      base-path: /actuator
-      exposure:
-        include: "*"
-
+    management:
+      server:
+        port: 9292
+      endpoint:
+        health:
+          show-details: always
+      endpoints:
+       web:
+         base-path: /actuator
+         exposure:
+           include: "*"
     
    ```
    </div>
