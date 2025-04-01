@@ -93,13 +93,13 @@
 - `EXPLAIN` 결과, **인넷을 효과적으로 활용하지 못하고** `Using where; Using temporary; Using filesort` 발생.
 
 
-### 🔹 **성능 개전 방법**
+### 🔹 **성능 개선 방법**
 
 #### **1. `FULLTEXT INDEX` 적용**
 ```sql
 CREATE FULLTEXT INDEX idx_title ON Portfolios(Title);
 ```
-✅ **기존 `LIKE` 검색 대시 `MATCH(Title) AGAINST(...)` 활용하여 성능 개전**
+✅ **기존 `LIKE` 검색 대시 `MATCH(Title) AGAINST(...)` 활용하여 성능 개선**
 
 #### **2. 성능 테스트**
 - **10만 개 데이터 기준**
@@ -108,14 +108,14 @@ CREATE FULLTEXT INDEX idx_title ON Portfolios(Title);
 
 
 ### 🔹 **성능 비교 결과**
-| 테스트 | 평균 실행 시간 (ms) | 개전
+| 테스트 | 평균 실행 시간 (ms) | 개선 |
 |----------------|------------------|--------|
 | **기존 코드 (`LIKE`)** | 113ms | - |
-| **개전 코드 (`FULLTEXT INDEX`)** | 95ms | **16.5%** |
+| **개선 코드 (`FULLTEXT INDEX`)** | 95ms | **16.5%** |
 
 #### **3. `EXPLAIN` 결과 차이점**
 - **기존 코드**: `Using index condition; Using where; Using temporary; Using filesort`
-- **개전 코드**: `Using where; Using filesort`, `type=fulltext`, `key=idx_title` 활용
+- **개선 코드**: `Using where; Using filesort`, `type=fulltext`, `key=idx_title` 활용
 
 ---
 
