@@ -3,11 +3,6 @@
 
 # 🚀 PortfolioHub
 
-> 통합 포트폴리오 웹 서비스
-
-
----
-
 
 ## 📜 프로젝트 개요
 > 이 프로젝트는 각 분야 별로 흩어진 포트폴리오 및 작업물을 하나의 플랫폼으로
@@ -19,6 +14,24 @@
 
   - 설계 기간: 2024.01.02 ~ 2024.03.01
   - 개발 기간: 2024.03.02 ~ 2024.06.19
+---
+
+- `역할`: 팀장
+- `주요 기여`
+   - 로그인 및 회원 가입: 암호화, 유효성 처리, 메일 인증, session인증 방식, 이메일 및 유저 아이디 중복 방지
+   - 포트폴리오 파트: 검색, 인기 유저 갱신, 조회 수 중복 방지, 페이징, 방문 기록, 좋아요 기능 등
+   - CI/CD: 무중단 배포 구축
+   - 백오피스: 관리자 기능, 사용자 제재(로그인 차단), 저작권 신고
+     - hasRole 4권한(USER, MENTO, ADMIN, BAN)
+   - 사용자 페이지: 팔로우 및 팔로잉
+   - ERD 설계
+     - 포트폴리오, 멘토링
+   - 문서화 작업(UML- 유스케이스, DB 테이블 명세서, 화면설계서)
+   - 일정관리 (WBS)
+   - 모니터링 추가
+
+--- 
+
 
 ## 🛠️ 프로젝트 아키텍처
 
@@ -41,14 +54,91 @@
 
 ![Travis CI](https://img.shields.io/badge/TravisCI-3EAAAF?style=for-the-badge&logo=travisci&logoColor=white)  ![Nginx](https://img.shields.io/badge/Nginx-269539?style=for-the-badge&logo=nginx&logoColor=white)
 
+### 📌 Monitoring
+![Grafana](https://img.shields.io/badge/Grafana-F46800?style=for-the-badge&logo=grafana&logoColor=white)  ![Prometheus](https://img.shields.io/badge/Prometheus-E6522C?style=for-the-badge&logo=prometheus&logoColor=white)
+
 ### 📌 협업 도구
-![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white) ![Notion](https://img.shields.io/badge/Notion-000000?style=for-the-badge&logo=notion&logoColor=white)  ![WBS](https://img.shields.io/badge/WBS-007ACC?style=for-the-badge&logo=&logoColor=white)
+![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)  ![Notion](https://img.shields.io/badge/Notion-000000?style=for-the-badge&logo=notion&logoColor=white)    ![WBS](https://img.shields.io/badge/WBS-007ACC?style=for-the-badge&logo=&logoColor=white)
+
+---
+
+## 🛠️ Refactoring
+
+### 🔹 대량 데이터 페이징 최적화
+> 약 10만개의 테스트 데이터 추가
+- **기존**: 페이징 시 전체 데이터 검색으로 인해 **레이트언시 발생**
+- **개선**: 페이징에 필요한 20개의 데이터만 불러오도록 코드 수정
+
+### 🔹 검색 성능 분석
+- `EXPLAIN ANALYZE`를 활용하여 코드 실행 계획 확인
+- **FullText Index** 적용
+
+### 🔹 성능 테스트 및 검증
+- **JMeter**를 활용한 부활 테스트 진행
+- 최적화 전후 성능 비교 → **검색 성능 16.5% 향상** 🚀
+
+### 🔹 불필한 특정 트랜젔션 제거 및 추가
+- **조회**의 경우 트랜젔션 제거
+- **업데이트 연관 작업** 시 트랜젔션 추가
+
+
+## **Indexing을 통한 성능 개선 요약**
+
+### 🔹 **Database**
+#### **B-tree 구조 InnoDB**
+![table](https://velog.velcdn.com/images/cisxo/post/01fc341c-206a-4f48-858b-1652b8bf16e3/image.png)
+
+### 🔹 **기존 코드 문제점**
+- `Portfolios` 테이블에서 `Title`을 검색할 때 `LIKE CONCAT('%', #{searchQuery}, '%')` 사용.
+- `EXPLAIN` 결과, **인넷을 효과적으로 활용하지 못하고** `Using where; Using temporary; Using filesort` 발생.
+
+
+### 🔹 **성능 개전 방법**
+
+#### **1. `FULLTEXT INDEX` 적용**
+```sql
+CREATE FULLTEXT INDEX idx_title ON Portfolios(Title);
+```
+✅ **기존 `LIKE` 검색 대시 `MATCH(Title) AGAINST(...)` 활용하여 성능 개전**
+
+#### **2. 성능 테스트**
+- **10만 개 데이터 기준**
+- **10개 스레드 동시 실행, 10회 복잡 측정**
+- **`EXPLAIN` 확인 및 실제 DB 응답 시간 측정**
+
+
+### 🔹 **성능 비교 결과**
+| 테스트 | 평균 실행 시간 (ms) | 개전
+|----------------|------------------|--------|
+| **기존 코드 (`LIKE`)** | 113ms | - |
+| **개전 코드 (`FULLTEXT INDEX`)** | 95ms | **16.5%** |
+
+#### **3. `EXPLAIN` 결과 차이점**
+- **기존 코드**: `Using index condition; Using where; Using temporary; Using filesort`
+- **개전 코드**: `Using where; Using filesort`, `type=fulltext`, `key=idx_title` 활용
+
+---
+
+## ✅ **결론**
+- `FULLTEXT INDEX` 적용으로 **검색 속도 약 16.5% 향상**
+- **페이징 최적화**로 전체 데이터 검색 문제 해결
+- **트랜젔션 제거 및 변경**으로 불필요한 오버헨드 감소 및 데이터 정확성 유지
 
 ---
 
 
-## 🎥 미리 보기
+## 📌 서비스 소개
+> 통합 포트폴리오 웹 서비스
 
+### 회원
+* 포트폴리오를 등록하고 관리가 가능합니다
+  <img width="1605" alt="Image" src="https://github.com/user-attachments/assets/b12aed6b-8997-4c74-971b-2034b556f2ad" />
+
+### 멘토 인증 절차
+* 멘토 인증 회원만 수익화가 가능합니다.
+  <img width="1593" alt="Image" src="https://github.com/user-attachments/assets/340b9ae9-1966-46f4-839a-c6e6bb4b7b55" />
+
+## 🎥 미리 보기
 
 
 | ![메인홈](https://github.com/user-attachments/assets/b6b5db71-f636-4b59-a2a9-f32f04603ecc) | ![검색](https://github.com/user-attachments/assets/93210e8d-2ae8-46c4-9329-c9d4698f31c7) |
